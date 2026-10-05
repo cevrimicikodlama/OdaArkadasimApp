@@ -1,180 +1,99 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ExternalLink } from '@/components/external-link';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useRoomData, type ListingType } from '@/components/room-data';
+import { RoomColors } from '@/constants/theme';
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
+const green = RoomColors.greenDark;
+const ink = RoomColors.ink;
+const muted = RoomColors.muted;
+
+export default function CreateListingScreen() {
+  const { addListing, user } = useRoomData();
+  const [type, setType] = useState<ListingType>('HAVE_ROOM');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [price, setPrice] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const ready = Boolean(title.trim() && description.trim() && city.trim() && district.trim() && Number(price) > 0 && user);
+
+  const publish = async () => {
+    if (!ready) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await addListing({ type, title: title.trim(), description: description.trim(), city: city.trim(), district: district.trim(), price: Number(price) });
+      setTitle('');
+      setDescription('');
+      setCity('');
+      setDistrict('');
+      setPrice('');
+      setSuccess(true);
+    } catch (publishError) {
+      setError(publishError instanceof Error ? publishError.message : 'İlan yayınlanamadı.');
+    } finally {
+      setSubmitting(false);
+    }
   };
-  const theme = useTheme();
-
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Text style={styles.eyebrow}>YENİ BİR BAŞLANGIÇ</Text>
+        <Text style={styles.title}>İlanını oluştur</Text>
+        <Text style={styles.subtitle}>Doğru ev arkadaşını bulmak için arayışını paylaş.</Text>
 
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
+        <Text style={styles.label}>NE ARIYORSUN?</Text>
+        <View style={styles.typeRow}>
+          <Pressable onPress={() => setType('HAVE_ROOM')} style={[styles.typeOption, type === 'HAVE_ROOM' && styles.typeSelected]}>
+            <Text style={styles.typeIcon}>⌂</Text><Text style={[styles.typeTitle, type === 'HAVE_ROOM' && styles.typeTitleSelected]}>Evde odam var</Text>
+            <Text style={styles.typeDescription}>Oda arkadaşı arıyorum</Text>
+          </Pressable>
+          <Pressable onPress={() => setType('NEED_ROOM')} style={[styles.typeOption, type === 'NEED_ROOM' && styles.typeSelected]}>
+            <Text style={styles.typeIcon}>⌕</Text><Text style={[styles.typeTitle, type === 'NEED_ROOM' && styles.typeTitleSelected]}>Oda arıyorum</Text>
+            <Text style={styles.typeDescription}>Bir eve taşınmak istiyorum</Text>
+          </Pressable>
+        </View>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
-            </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+        <View style={styles.formSection}>
+          <Text style={styles.label}>İLAN DETAYLARI</Text>
+          <Text style={styles.fieldLabel}>İlan başlığı</Text>
+          <TextInput value={title} onChangeText={setTitle} placeholder="Örn. Kadıköy'de aydınlık oda" placeholderTextColor="#9AA39D" style={styles.input} maxLength={150} />
+          <Text style={styles.fieldLabel}>Açıklama</Text>
+          <TextInput value={description} onChangeText={setDescription} placeholder="Evini, yaşam düzenini ve beklentilerini anlat..." placeholderTextColor="#9AA39D" multiline textAlignVertical="top" style={[styles.input, styles.descriptionInput]} />
+          <Text style={styles.fieldLabel}>Konum</Text>
+          <View style={styles.locationFields}>
+            <TextInput value={city} onChangeText={setCity} placeholder="Şehir" placeholderTextColor="#9AA39D" style={[styles.input, styles.halfInput]} />
+            <TextInput value={district} onChangeText={setDistrict} placeholder="İlçe" placeholderTextColor="#9AA39D" style={[styles.input, styles.halfInput]} />
+          </View>
+          <Text style={styles.fieldLabel}>Aylık kira payı / bütçe</Text>
+          <View style={styles.priceField}>
+            <TextInput value={price} onChangeText={(value) => setPrice(value.replace(/[^0-9]/g, ''))} placeholder="12.500" placeholderTextColor="#9AA39D" keyboardType="number-pad" style={styles.priceInput} />
+            <Text style={styles.currency}>₺ / ay</Text>
+          </View>
+        </View>
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
-
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+        <View style={styles.noteBox}><Text style={styles.noteMark}>i</Text><Text style={styles.noteText}>İlanın yayınlandıktan sonra gelen teklifleri Teklifler sekmesinden yönetebilirsin.</Text></View>
+        {!user && <Text style={styles.errorText}>İlan yayınlamak için Profil sekmesinden giriş yap.</Text>}
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
+        <Pressable onPress={() => void publish()} disabled={!ready || submitting} style={[styles.publishButton, (!ready || submitting) && styles.publishDisabled]}>
+          <Text style={styles.publishText}>{submitting ? 'Yayınlanıyor...' : success ? 'İlanın yayınlandı' : 'İlanı yayınla'}</Text><Text style={styles.publishArrow}>↗</Text>
+        </Pressable>
+        {success && <Text style={styles.successText}>İlanın Keşfet bölümüne eklendi.</Text>}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
-  },
+  safeArea: { flex: 1, backgroundColor: RoomColors.canvas }, content: { padding: 20, paddingBottom: 32 },
+  eyebrow: { color: green, fontSize: 10, fontWeight: '800', letterSpacing: 1.3, marginTop: 8 }, title: { color: ink, fontSize: 27, fontWeight: '800', marginTop: 5 }, subtitle: { color: muted, fontSize: 12, lineHeight: 18, marginTop: 6, maxWidth: 310 },
+  label: { color: muted, fontSize: 10, fontWeight: '800', letterSpacing: 0.9, marginBottom: 10 }, typeRow: { flexDirection: 'row', gap: 9, marginTop: 21 }, typeOption: { flex: 1, minHeight: 120, backgroundColor: RoomColors.surface, borderWidth: 1, borderColor: RoomColors.border, borderRadius: 6, padding: 13, justifyContent: 'center' }, typeSelected: { borderColor: green, backgroundColor: RoomColors.mint }, typeIcon: { color: green, fontSize: 23, marginBottom: 6 }, typeTitle: { color: ink, fontSize: 12, fontWeight: '800' }, typeTitleSelected: { color: green }, typeDescription: { color: muted, fontSize: 9, marginTop: 4 },
+  formSection: { marginTop: 25 }, fieldLabel: { color: ink, fontSize: 11, fontWeight: '700', marginTop: 13, marginBottom: 6 }, input: { minHeight: 46, backgroundColor: RoomColors.surface, borderWidth: 1, borderColor: RoomColors.border, borderRadius: 5, paddingHorizontal: 12, color: ink, fontSize: 12 }, descriptionInput: { height: 100, paddingTop: 12 }, locationFields: { flexDirection: 'row', gap: 9 }, halfInput: { flex: 1 }, priceField: { minHeight: 46, flexDirection: 'row', alignItems: 'center', backgroundColor: RoomColors.surface, borderWidth: 1, borderColor: RoomColors.border, borderRadius: 5, paddingHorizontal: 12 }, priceInput: { flex: 1, color: ink, fontSize: 12, paddingVertical: 10 }, currency: { color: muted, fontSize: 11, fontWeight: '700' },
+  noteBox: { flexDirection: 'row', gap: 9, backgroundColor: RoomColors.paleMint, padding: 12, borderRadius: 5, marginTop: 20, alignItems: 'flex-start' }, noteMark: { color: green, fontWeight: '800', fontSize: 13 }, noteText: { color: muted, fontSize: 10, lineHeight: 15, flex: 1 }, publishButton: { height: 49, backgroundColor: green, borderRadius: 5, marginTop: 17, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }, publishDisabled: { backgroundColor: RoomColors.silver }, publishText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 }, publishArrow: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' }, successText: { color: green, textAlign: 'center', marginTop: 9, fontSize: 11, fontWeight: '700' }, errorText: { color: '#A3483D', fontSize: 10, lineHeight: 15, marginTop: 10 },
 });

@@ -1,5 +1,27 @@
 # Welcome to your Expo app 👋
 
+## Roommate app setup
+
+The mobile app uses the Express API in `server/` and the MySQL schema in `server/schema.sql`.
+
+1. Install MySQL 8 or newer and run `server/schema.sql` in MySQL Workbench (or with a MySQL client) using an administrator account. Then create a least-privilege API user:
+
+   ```sql
+   CREATE USER 'oda_app'@'localhost' IDENTIFIED BY 'choose-a-unique-password';
+   GRANT SELECT, INSERT, UPDATE, DELETE ON oda_arkadasim.* TO 'oda_app'@'localhost';
+   ```
+
+   Use the same username and password in `.env`.
+2. Copy `.env.example` to `.env`. Set `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and a unique random `JWT_SECRET` of at least 32 characters.
+3. For an Android emulator, `EXPO_PUBLIC_API_URL=http://10.0.2.2:4000/api` works as configured in the example. For a physical Android phone, replace `10.0.2.2` with the development computer's LAN IPv4 address and allow port 4000 through its firewall. Add the Expo web origin to `CORS_ORIGINS` if using web.
+4. Start the API with `npm run api` and the app with `npm start -- --lan` in separate terminals. Check the database connection at `http://localhost:4000/api/health`.
+
+Passwords are hashed with bcrypt on the API; the app stores the JWT in Android SecureStore. Never commit `.env` or expose database credentials in the mobile app.
+
+Run `npm run lint` and `npx tsc --noEmit` to validate the project.
+
+## Expo starter documentation
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

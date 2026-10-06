@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoomData } from '@/components/room-data';
@@ -20,6 +21,22 @@ export default function ProfileScreen() {
   const [birthDate, setBirthDate] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const switchWidth = useSharedValue(0);
+  const activeSwitch = useSharedValue(0);
+
+  const switchIndicatorStyle = useAnimatedStyle(() => {
+    const itemWidth = Math.max((switchWidth.value - 6) / 2, 0);
+    return {
+      width: itemWidth,
+      transform: [{ translateX: (itemWidth + 3) * activeSwitch.value }],
+    };
+  });
+
+  const selectMode = (nextMode: boolean) => {
+    setIsLogin(nextMode);
+    setError('');
+    activeSwitch.value = withTiming(nextMode ? 1 : 0, { duration: 220 });
+  };
 
   const submit = async () => {
     if (!email.includes('@') || password.length < 8 || (!isLogin && (!firstName.trim() || !lastName.trim()))) {
@@ -75,12 +92,13 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.brandMark}><Text style={styles.brandGlyph}>⌂</Text></View>
         <Text style={styles.eyebrow}>ODA ARKADAŞIM</Text>
-        <Text style={styles.title}>{isLogin ? 'Tekrar hoş geldin.' : 'İyi bir ev, iyi insanlarla başlar.'}</Text>
+        <Text style={styles.title}>{isLogin ? 'Tekrar hoş geldin.' : 'İyi bir ev, iyi insanlarla başlar...'}</Text>
         <Text style={styles.subtitle}>{isLogin ? 'Hesabına giriş yap ve kaldığın yerden devam et.' : 'Hesabını oluştur, sana uygun ev arkadaşını bul.'}</Text>
 
-        <View style={styles.switchRow}>
-          <Pressable onPress={() => { setIsLogin(false); setError(''); }} style={[styles.switchItem, !isLogin && styles.switchActive]}><Text style={[styles.switchText, !isLogin && styles.switchTextActive]}>Hesap oluştur</Text></Pressable>
-          <Pressable onPress={() => { setIsLogin(true); setError(''); }} style={[styles.switchItem, isLogin && styles.switchActive]}><Text style={[styles.switchText, isLogin && styles.switchTextActive]}>Giriş yap</Text></Pressable>
+        <View style={styles.switchRow} onLayout={(event) => { switchWidth.value = event.nativeEvent.layout.width; }}>
+          <Animated.View pointerEvents="none" style={[styles.switchIndicator, switchIndicatorStyle]} />
+          <Pressable onPress={() => selectMode(false)} style={styles.switchItem}><Text style={[styles.switchText, !isLogin && styles.switchTextActive]}>Hesap oluştur</Text></Pressable>
+          <Pressable onPress={() => selectMode(true)} style={styles.switchItem}><Text style={[styles.switchText, isLogin && styles.switchTextActive]}>Giriş yap</Text></Pressable>
         </View>
 
         {!isLogin && <View style={styles.nameRow}>
@@ -109,7 +127,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: RoomColors.canvas }, content: { padding: 22, paddingBottom: 32 },
   brandMark: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: RoomColors.mint, marginTop: 13, marginBottom: 19 }, brandGlyph: { color: green, fontSize: 27, fontWeight: '700' },
   eyebrow: { color: green, fontSize: 10, fontWeight: '800', letterSpacing: 1.3 }, title: { color: ink, fontSize: 25, fontWeight: '800', marginTop: 7, maxWidth: 315 }, subtitle: { color: muted, fontSize: 12, lineHeight: 18, marginTop: 7, maxWidth: 300 },
-  switchRow: { flexDirection: 'row', backgroundColor: RoomColors.paleMint, padding: 3, borderRadius: 5, marginTop: 22, marginBottom: 17 }, switchItem: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 3 }, switchActive: { backgroundColor: RoomColors.surface }, switchText: { color: muted, fontSize: 11, fontWeight: '600' }, switchTextActive: { color: green, fontWeight: '800' },
+  switchRow: { position: 'relative', flexDirection: 'row', backgroundColor: RoomColors.paleMint, padding: 3, borderRadius: 5, marginTop: 22, marginBottom: 17 }, switchIndicator: { position: 'absolute', left: 3, top: 3, bottom: 3, backgroundColor: RoomColors.surface, borderRadius: 3, shadowColor: ink, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 }, switchItem: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 3, zIndex: 1 }, switchText: { color: muted, fontSize: 11, fontWeight: '600' }, switchTextActive: { color: green, fontWeight: '800' },
   nameRow: { flexDirection: 'row', gap: 9 }, nameField: { flex: 1 }, fieldLabel: { color: ink, fontSize: 11, fontWeight: '700', marginTop: 12, marginBottom: 6 }, optional: { color: muted, fontSize: 10, fontWeight: '400' }, input: { minHeight: 46, backgroundColor: RoomColors.surface, borderWidth: 1, borderColor: RoomColors.border, borderRadius: 5, paddingHorizontal: 12, color: ink, fontSize: 12 }, bioInput: { height: 81, paddingTop: 12 },
   submitButton: { height: 49, backgroundColor: green, borderRadius: 5, marginTop: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }, submitDisabled: { opacity: 0.65 }, submitText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 }, submitArrow: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' }, terms: { color: '#8A948E', fontSize: 9, lineHeight: 14, textAlign: 'center', marginTop: 13, paddingHorizontal: 12 }, errorText: { color: '#A3483D', fontSize: 10, marginTop: 10, lineHeight: 15 },
   profileCard: { alignItems: 'center', backgroundColor: RoomColors.surface, borderRadius: 6, borderWidth: 1, borderColor: RoomColors.border, padding: 20, marginTop: 22 }, profileAvatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: RoomColors.mint }, avatarLetters: { color: green, fontSize: 20, fontWeight: '800' }, profileName: { color: ink, fontSize: 18, fontWeight: '800', marginTop: 12 }, profileEmail: { color: muted, fontSize: 11, marginTop: 4 }, profileBio: { color: muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 14 }, profileRule: { width: '100%', height: 1, backgroundColor: RoomColors.border, marginVertical: 17 }, profileLine: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }, profileLabel: { color: muted, fontSize: 11 }, profileValue: { color: green, fontSize: 10, fontWeight: '700' },

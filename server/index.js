@@ -31,7 +31,7 @@ const registerSchema = z.object({
   last_name: z.string().trim().min(1).max(50),
   email: z.string().trim().email().max(100).transform((value) => value.toLowerCase()),
   password: passwordSchema,
-  birth_date: z.string().date().nullable().optional(),
+  birth_date: z.string().date(),
   bio: z.string().max(5000).nullable().optional(),
 });
 const loginSchema = z.object({

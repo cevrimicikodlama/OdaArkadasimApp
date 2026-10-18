@@ -9,12 +9,14 @@ CREATE TABLE IF NOT EXISTS users (
   first_name VARCHAR(50) NOT NULL,
   last_name VARCHAR(50) NOT NULL,
   email VARCHAR(100) NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  google_id VARCHAR(255) NULL,
+  password_hash VARCHAR(255) NULL,
   birth_date DATE NULL,
   bio TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY users_email_unique (email)
+  UNIQUE KEY users_email_unique (email),
+  UNIQUE KEY users_google_id_unique (google_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS listings (

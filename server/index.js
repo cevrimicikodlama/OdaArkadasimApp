@@ -162,10 +162,59 @@ app.post('/api/auth/login', authRateLimit, async (request, response) => {
   if (!body) return;
   const [rows] = await pool.execute(`SELECT ${userColumns}, password_hash FROM users WHERE email = ?`, [body.email]);
   const row = rows[0];
-  if (!row || !(await bcrypt.compare(body.password, row.password_hash))) {
+  if (!row || !row.password_hash || !(await bcrypt.compare(body.password, row.password_hash))) {
     return response.status(401).json({ error: 'E-posta veya şifre hatalı.' });
   }
   const user = mapUser(row);
+  return response.json({ user, token: createAccessToken(user) });
+});
+
+app.post('/api/auth/google', authRateLimit, async (request, response) => {
+  const { accessToken } = request.body;
+  if (!accessToken || typeof accessToken !== 'string') {
+    return response.status(400).json({ error: 'Google erişim tokeni gerekli.' });
+  }
+
+  let googleUser;
+  try {
+    const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!googleRes.ok) throw new Error('Token geçersiz.');
+    googleUser = await googleRes.json();
+  } catch {
+    return response.status(401).json({ error: 'Google doğrulaması başarısız. Lütfen tekrar deneyin.' });
+  }
+
+  const googleId = googleUser.sub;
+  const email = (googleUser.email || '').toLowerCase();
+  const firstName = googleUser.given_name || (googleUser.name || '').split(' ')[0] || 'Kullanıcı';
+  const lastName = googleUser.family_name || (googleUser.name || '').split(' ').slice(1).join(' ') || '';
+
+  if (!googleId || !email) {
+    return response.status(400).json({ error: 'Google hesabı e-posta bilgisi sağlamadı.' });
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT ${userColumns}, google_id FROM users WHERE google_id = ? OR email = ? LIMIT 1`,
+    [googleId, email],
+  );
+
+  let user;
+  if (rows[0]) {
+    if (!rows[0].google_id) {
+      await pool.execute('UPDATE users SET google_id = ? WHERE id = ?', [googleId, rows[0].id]);
+    }
+    user = mapUser(rows[0]);
+  } else {
+    const [result] = await pool.execute(
+      'INSERT INTO users (first_name, last_name, email, google_id) VALUES (?, ?, ?, ?)',
+      [firstName, lastName, email, googleId],
+    );
+    const [newRows] = await pool.execute(`SELECT ${userColumns} FROM users WHERE id = ?`, [result.insertId]);
+    user = mapUser(newRows[0]);
+  }
+
   return response.json({ user, token: createAccessToken(user) });
 });
 

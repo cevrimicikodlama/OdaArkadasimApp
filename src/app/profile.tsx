@@ -1,17 +1,21 @@
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoomData } from '@/components/room-data';
 import { RoomColors } from '@/constants/theme';
 
+WebBrowser.maybeCompleteAuthSession();
+
 const green = RoomColors.greenDark;
 const ink = RoomColors.ink;
 const muted = RoomColors.muted;
 
 export default function ProfileScreen() {
-  const { user, register, login, logout } = useRoomData();
+  const { user, register, login, loginWithGoogle, logout } = useRoomData();
   const [isLogin, setIsLogin] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -21,10 +25,36 @@ export default function ProfileScreen() {
   const [birthDate, setBirthDate] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [showRequiredErrors, setShowRequiredErrors] = useState(false);
   const [validationNotice, setValidationNotice] = useState<{ title: string; message: string } | null>(null);
   const switchWidth = useSharedValue(0);
   const activeSwitch = useSharedValue(0);
+
+  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const accessToken = googleResponse.authentication?.accessToken;
+      if (accessToken) {
+        setGoogleSubmitting(true);
+        void (async () => {
+          try {
+            await loginWithGoogle(accessToken);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Google ile giriş yapılamadı.');
+          } finally {
+            setGoogleSubmitting(false);
+          }
+        })();
+      }
+    } else if (googleResponse?.type === 'error') {
+      setError('Google girişi iptal edildi veya bir hata oluştu.');
+    }
+  }, [googleResponse, loginWithGoogle]);
 
   const switchIndicatorStyle = useAnimatedStyle(() => {
     const itemWidth = Math.max((switchWidth.value - 6) / 2, 0);
@@ -158,6 +188,10 @@ export default function ProfileScreen() {
         </>}
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         <Pressable disabled={submitting} style={[styles.submitButton, submitting && styles.submitDisabled]} onPress={() => void submit()}><Text style={styles.submitText}>{submitting ? 'Bağlanıyor...' : isLogin ? 'Giriş yap' : 'Hesabımı oluştur'}</Text></Pressable>
+        <Pressable style={styles.googleButton} onPress={() => { /* Google OAuth */ }}>
+          <Image source={require('../../assets/images/google_logo.png')} style={styles.googleLogo} resizeMode="contain" />
+          <Text style={styles.googleText}>Google ile {isLogin ? 'giriş yap' : 'hesap oluştur'}</Text>
+        </Pressable>
         <Text style={styles.terms}>Devam ederek kullanım koşullarını ve gizlilik politikasını kabul etmiş olursun.</Text>
       </ScrollView>
       <Modal visible={validationNotice !== null} transparent animationType="fade" onRequestClose={() => setValidationNotice(null)}>
@@ -183,6 +217,7 @@ const styles = StyleSheet.create({
   validationBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(23, 27, 24, 0.38)', padding: 24 }, validationDialog: { width: '100%', maxWidth: 360, backgroundColor: RoomColors.surface, borderRadius: 8, padding: 20 }, validationTitle: { color: ink, fontSize: 16, fontWeight: '800' }, validationTitleError: { color: '#C0392B' }, validationMessage: { color: muted, fontSize: 13, lineHeight: 19, marginTop: 8 }, validationButton: { alignSelf: 'flex-end', backgroundColor: RoomColors.paleMint, borderRadius: 5, paddingHorizontal: 16, paddingVertical: 10, marginTop: 14 }, validationButtonText: { color: green, fontSize: 12, fontWeight: '800' },
   nameRow: { flexDirection: 'row', gap: 9 }, nameField: { flex: 1 }, fieldLabel: { color: ink, fontSize: 11, fontWeight: '700', marginTop: 12, marginBottom: 6 }, requiredMark: { color: '#9AA39D', fontSize: 12, fontWeight: '800' }, requiredMarkInvalid: { color: '#C0392B' }, optional: { color: muted, fontSize: 10, fontWeight: '400' }, input: { minHeight: 46, backgroundColor: RoomColors.surface, borderWidth: 1, borderColor: RoomColors.border, borderRadius: 5, paddingHorizontal: 12, color: ink, fontSize: 12 }, bioInput: { height: 81, paddingTop: 12 },
   submitButton: { height: 49, backgroundColor: green, borderRadius: 5, marginTop: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }, submitDisabled: { opacity: 0.65 }, submitText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 }, submitArrow: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' }, terms: { color: '#8A948E', fontSize: 9, lineHeight: 14, textAlign: 'center', marginTop: 13, paddingHorizontal: 12 }, errorText: { color: '#A3483D', fontSize: 10, marginTop: 10, lineHeight: 15 },
+  googleButton: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#DADCE0', borderRadius: 5, paddingVertical: 11, paddingHorizontal: 20, marginTop: 10, gap: 8, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 }, googleLogo: { width: 18, height: 18 }, googleText: { color: '#3C4043', fontSize: 12, fontWeight: '600' },
   profileCard: { alignItems: 'center', backgroundColor: RoomColors.surface, borderRadius: 6, borderWidth: 1, borderColor: RoomColors.border, padding: 20, marginTop: 22 }, profileAvatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: RoomColors.mint }, avatarLetters: { color: green, fontSize: 20, fontWeight: '800' }, profileName: { color: ink, fontSize: 18, fontWeight: '800', marginTop: 12 }, profileEmail: { color: muted, fontSize: 11, marginTop: 4 }, profileBio: { color: muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 14 }, profileRule: { width: '100%', height: 1, backgroundColor: RoomColors.border, marginVertical: 17 }, profileLine: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }, profileLabel: { color: muted, fontSize: 11 }, profileValue: { color: green, fontSize: 10, fontWeight: '700' },
   privacyNote: { backgroundColor: RoomColors.paleMint, padding: 14, borderRadius: 5, marginTop: 14 }, privacyTitle: { color: green, fontSize: 11, fontWeight: '800' }, privacyText: { color: muted, fontSize: 10, lineHeight: 15, marginTop: 5 }, logoutButton: { alignItems: 'center', padding: 14, marginTop: 8 }, logoutText: { color: '#A3483D', fontSize: 11, fontWeight: '700' },
 });

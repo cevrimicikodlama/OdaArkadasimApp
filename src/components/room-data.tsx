@@ -7,6 +7,7 @@ import {
   getListings,
   getOffers,
   login as loginRequest,
+  loginWithGoogle as loginWithGoogleRequest,
   logout as logoutRequest,
   register as registerRequest,
   updateOfferStatus as updateOfferStatusRequest,
@@ -58,6 +59,7 @@ type RoomDataContextValue = {
   apiError: string | null;
   register: (input: RegisterInput) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (accessToken: string) => Promise<void>;
   logout: () => Promise<void>;
   addListing: (listing: Omit<RoomListing, 'id' | 'userId' | 'status' | 'created_at' | 'ownerName' | 'age' | 'occupation' | 'tags' | 'image'>) => Promise<void>;
   addOffer: (listing: RoomListing, message: string) => Promise<void>;
@@ -123,6 +125,13 @@ export function RoomDataProvider({ children }: { children: ReactNode }) {
     await refreshOffers();
   };
 
+  const loginWithGoogle = async (accessToken: string) => {
+    const account = await loginWithGoogleRequest(accessToken);
+    setUser(account);
+    setApiError(null);
+    await refreshOffers();
+  };
+
   const logout = async () => {
     await logoutRequest();
     setUser(null);
@@ -137,6 +146,7 @@ export function RoomDataProvider({ children }: { children: ReactNode }) {
     apiError,
     register,
     login,
+    loginWithGoogle,
     logout,
     addListing: async (listing) => {
       const result = await createListingRequest(listing);

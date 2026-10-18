@@ -93,6 +93,15 @@ export async function logout() {
   await deleteAccessToken();
 }
 
+export async function loginWithGoogle(accessToken: string) {
+  const result = await request<{ user: UserAccount; token: string }>('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ accessToken }),
+  });
+  await saveAccessToken(result.token);
+  return result.user;
+}
+
 export const getCurrentUser = () => request<{ user: UserAccount }>('/auth/me');
 export const getListings = () => request<{ listings: ApiListing[] }>('/listings');
 export const getOffers = () => request<{ offers: ApiOffer[] }>('/offers');

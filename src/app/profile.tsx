@@ -14,6 +14,36 @@ const green = RoomColors.greenDark;
 const ink = RoomColors.ink;
 const muted = RoomColors.muted;
 
+const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const googleConfigured = Boolean(googleAndroidClientId || googleWebClientId);
+
+// Hook yalnızca client ID tanımlıysa çalışır; aksi halde ekran Google olmadan da açılır.
+function GoogleButton({ label, onToken, onError }: { label: string; onToken: (token: string) => Promise<unknown>; onError: (message: string) => void }) {
+  const [, response, prompt] = Google.useAuthRequest({
+    androidClientId: googleAndroidClientId,
+    webClientId: googleWebClientId,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const accessToken = response.authentication?.accessToken;
+      if (accessToken) {
+        onToken(accessToken).catch((err) => onError(err instanceof Error ? err.message : 'Google ile giriş yapılamadı.'));
+      }
+    } else if (response?.type === 'error') {
+      onError('Google girişi iptal edildi veya bir hata oluştu.');
+    }
+  }, [response, onToken, onError]);
+
+  return (
+    <Pressable style={styles.googleButton} onPress={() => { void prompt(); }}>
+      <Image source={require('../../assets/images/google_logo.png')} style={styles.googleLogo} resizeMode="contain" />
+      <Text style={styles.googleText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function ProfileScreen() {
   const { user, register, login, loginWithGoogle, logout } = useRoomData();
   const [isLogin, setIsLogin] = useState(false);
@@ -25,42 +55,10 @@ export default function ProfileScreen() {
   const [birthDate, setBirthDate] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const [showRequiredErrors, setShowRequiredErrors] = useState(false);
+    const [showRequiredErrors, setShowRequiredErrors] = useState(false);
   const [validationNotice, setValidationNotice] = useState<{ title: string; message: string } | null>(null);
   const switchWidth = useSharedValue(0);
   const activeSwitch = useSharedValue(0);
-
-  const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-  const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-  const googleConfigured = Boolean(googleAndroidClientId || googleWebClientId);
-
-  // Client ID tanımlı değilse hook render sırasında hata fırlatır; yer tutucu kullan.
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    androidClientId: googleAndroidClientId || 'not-configured',
-    iosClientId: 'not-configured',
-    webClientId: googleWebClientId || 'not-configured',
-  });
-
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const accessToken = googleResponse.authentication?.accessToken;
-      if (accessToken) {
-        setGoogleSubmitting(true);
-        void (async () => {
-          try {
-            await loginWithGoogle(accessToken);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Google ile giriş yapılamadı.');
-          } finally {
-            setGoogleSubmitting(false);
-          }
-        })();
-      }
-    } else if (googleResponse?.type === 'error') {
-      setError('Google girişi iptal edildi veya bir hata oluştu.');
-    }
-  }, [googleResponse, loginWithGoogle]);
 
   const switchIndicatorStyle = useAnimatedStyle(() => {
     const itemWidth = Math.max((switchWidth.value - 6) / 2, 0);
@@ -194,16 +192,9 @@ export default function ProfileScreen() {
         </>}
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         <Pressable disabled={submitting} style={[styles.submitButton, submitting && styles.submitDisabled]} onPress={() => void submit()}><Text style={styles.submitText}>{submitting ? 'Bağlanıyor...' : isLogin ? 'Giriş yap' : 'Hesabımı oluştur'}</Text></Pressable>
-        <Pressable style={styles.googleButton} onPress={() => {
-          if (!googleConfigured) {
-            setError('Google girişi yapılandırılmamış (EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID).');
-            return;
-          }
-          void promptGoogleAsync();
-        }}>
-          <Image source={require('../../assets/images/google_logo.png')} style={styles.googleLogo} resizeMode="contain" />
-          <Text style={styles.googleText}>Google ile {isLogin ? 'giriş yap' : 'hesap oluştur'}</Text>
-        </Pressable>
+        {googleConfigured ? (
+          <GoogleButton label={`Google ile ${isLogin ? 'giriş yap' : 'hesap oluştur'}`} onToken={loginWithGoogle} onError={setError} />
+        ) : null}
         <Text style={styles.terms}>Devam ederek kullanım koşullarını ve gizlilik politikasını kabul etmiş olursun.</Text>
       </ScrollView>
       <Modal visible={validationNotice !== null} transparent animationType="fade" onRequestClose={() => setValidationNotice(null)}>

@@ -31,9 +31,15 @@ export default function ProfileScreen() {
   const switchWidth = useSharedValue(0);
   const activeSwitch = useSharedValue(0);
 
+  const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  const googleConfigured = Boolean(googleAndroidClientId || googleWebClientId);
+
+  // Client ID tanımlı değilse hook render sırasında hata fırlatır; yer tutucu kullan.
   const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: googleAndroidClientId || 'not-configured',
+    iosClientId: 'not-configured',
+    webClientId: googleWebClientId || 'not-configured',
   });
 
   useEffect(() => {
@@ -188,7 +194,13 @@ export default function ProfileScreen() {
         </>}
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         <Pressable disabled={submitting} style={[styles.submitButton, submitting && styles.submitDisabled]} onPress={() => void submit()}><Text style={styles.submitText}>{submitting ? 'Bağlanıyor...' : isLogin ? 'Giriş yap' : 'Hesabımı oluştur'}</Text></Pressable>
-        <Pressable style={styles.googleButton} onPress={() => { /* Google OAuth */ }}>
+        <Pressable style={styles.googleButton} onPress={() => {
+          if (!googleConfigured) {
+            setError('Google girişi yapılandırılmamış (EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID).');
+            return;
+          }
+          void promptGoogleAsync();
+        }}>
           <Image source={require('../../assets/images/google_logo.png')} style={styles.googleLogo} resizeMode="contain" />
           <Text style={styles.googleText}>Google ile {isLogin ? 'giriş yap' : 'hesap oluştur'}</Text>
         </Pressable>

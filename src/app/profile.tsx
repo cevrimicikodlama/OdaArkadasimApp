@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import * as Google from 'expo-auth-session/providers/google';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRoomData } from '@/components/room-data';
 import { RoomColors } from '@/constants/theme';
+
+let Google: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    Google = require('expo-auth-session/providers/google');
+  } catch (e) {
+    console.warn('Google auth not available:', e);
+  }
+}
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -31,10 +39,10 @@ export default function ProfileScreen() {
   const switchWidth = useSharedValue(0);
   const activeSwitch = useSharedValue(0);
 
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+  const [, googleResponse, promptGoogleAsync] = Google ? Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
+  }) : [null, null, null];
 
   useEffect(() => {
     if (googleResponse?.type === 'success') {
@@ -188,10 +196,10 @@ export default function ProfileScreen() {
         </>}
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         <Pressable disabled={submitting} style={[styles.submitButton, submitting && styles.submitDisabled]} onPress={() => void submit()}><Text style={styles.submitText}>{submitting ? 'Bağlanıyor...' : isLogin ? 'Giriş yap' : 'Hesabımı oluştur'}</Text></Pressable>
-        <Pressable style={styles.googleButton} onPress={() => { /* Google OAuth */ }}>
+        {Google && promptGoogleAsync && <Pressable disabled={googleSubmitting} style={[styles.googleButton, googleSubmitting && styles.submitDisabled]} onPress={() => void promptGoogleAsync()}>
           <Image source={require('../../assets/images/google_logo.png')} style={styles.googleLogo} resizeMode="contain" />
           <Text style={styles.googleText}>Google ile {isLogin ? 'giriş yap' : 'hesap oluştur'}</Text>
-        </Pressable>
+        </Pressable>}
         <Text style={styles.terms}>Devam ederek kullanım koşullarını ve gizlilik politikasını kabul etmiş olursun.</Text>
       </ScrollView>
       <Modal visible={validationNotice !== null} transparent animationType="fade" onRequestClose={() => setValidationNotice(null)}>

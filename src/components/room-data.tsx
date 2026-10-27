@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { useI18n } from '@/i18n/language-provider';
+
 import {
   createListing as createListingRequest,
   createOffer as createOfferRequest,
@@ -69,6 +71,7 @@ type RoomDataContextValue = {
 const RoomDataContext = createContext<RoomDataContextValue | null>(null);
 
 export function RoomDataProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [listings, setListings] = useState<RoomListing[]>([]);
   const [offers, setOffers] = useState<RoomOffer[]>([]);
   const [user, setUser] = useState<UserAccount | null>(null);
@@ -98,12 +101,13 @@ export function RoomDataProvider({ children }: { children: ReactNode }) {
         }
         if (active) setApiError(null);
       } catch (error) {
-        if (active) setApiError(error instanceof Error ? error.message : 'Sunucuya bağlanılamadı.');
+        if (active) setApiError(error instanceof Error ? error.message : t('common.serverUnreachable'));
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refreshOffers = async () => {
@@ -155,7 +159,7 @@ export function RoomDataProvider({ children }: { children: ReactNode }) {
     addOffer: async (listing, message) => {
       const result = await createOfferRequest(listing.id, message);
       setOffers((current) => [{
-        id: result.id, listingId: listing.id, listingTitle: listing.title, applicantName: 'Sen',
+        id: result.id, listingId: listing.id, listingTitle: listing.title, applicantName: t('offers.you'),
         message, status: result.status, direction: 'outgoing', created_at: new Date().toISOString(),
       }, ...current]);
     },

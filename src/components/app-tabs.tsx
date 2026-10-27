@@ -3,7 +3,10 @@ import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { RoomColors } from '@/constants/theme';
+import { useMemo } from 'react';
+import type { Palette } from '@/constants/theme';
+import { useI18n } from '@/i18n/language-provider';
+import { useAppTheme } from '@/theme/theme-provider';
 
 type TabButtonProps = TabTriggerSlotProps & {
   icon: {
@@ -15,7 +18,9 @@ type TabButtonProps = TabTriggerSlotProps & {
 };
 
 function TabButton({ isFocused = false, icon, label, style: _style, ...props }: TabButtonProps) {
-  const tintColor = isFocused ? RoomColors.greenDark : RoomColors.muted;
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const tintColor = isFocused ? colors.greenDark : colors.muted;
 
   return (
     <Pressable
@@ -32,6 +37,9 @@ function TabButton({ isFocused = false, icon, label, style: _style, ...props }: 
 
 export default function AppTabs() {
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
+  const { t } = useI18n();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <Tabs style={styles.tabs}>
@@ -45,24 +53,24 @@ export default function AppTabs() {
           },
         ]}>
         <TabTrigger name="index" href="/" asChild>
-          <TabButton icon={{ ios: 'magnifyingglass', android: 'search', web: 'search' }} label="Keşfet" />
+          <TabButton icon={{ ios: 'magnifyingglass', android: 'search', web: 'search' }} label={t('tab.discover')} />
         </TabTrigger>
         <TabTrigger name="explore" href="/explore" asChild>
-          <TabButton icon={{ ios: 'house', android: 'add_home', web: 'add_home' }} label="İlan ver" />
+          <TabButton icon={{ ios: 'house', android: 'add_home', web: 'add_home' }} label={t('tab.post')} />
         </TabTrigger>
         <TabTrigger name="offers" href="/offers" asChild>
-          <TabButton icon={{ ios: 'bubble.left.and.bubble.right', android: 'forum', web: 'forum' }} label="Teklifler" />
+          <TabButton icon={{ ios: 'bubble.left.and.bubble.right', android: 'forum', web: 'forum' }} label={t('tab.offers')} />
         </TabTrigger>
         <TabTrigger name="profile" href="/profile" asChild>
-          <TabButton icon={{ ios: 'person', android: 'person', web: 'person' }} label="Profil" />
+          <TabButton icon={{ ios: 'person', android: 'person', web: 'person' }} label={t('tab.profile')} />
         </TabTrigger>
       </TabList>
     </Tabs>
   );
 }
 
-const styles = StyleSheet.create({
-  tabs: { flex: 1, backgroundColor: RoomColors.canvas },
+const createStyles = (c: Palette) => StyleSheet.create({
+  tabs: { flex: 1, backgroundColor: c.canvas },
   tabSlot: { flex: 1 },
   tabBar: {
     flexDirection: 'row',
@@ -70,9 +78,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 8,
     paddingTop: 5,
-    backgroundColor: RoomColors.surface,
+    backgroundColor: c.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: RoomColors.border,
+    borderTopColor: c.border,
   },
   tabButton: {
     flex: 1,
@@ -82,8 +90,8 @@ const styles = StyleSheet.create({
     gap: 3,
     borderRadius: 8,
   },
-  tabButtonSelected: { backgroundColor: 'rgba(223, 245, 212, 0.68)' },
-  tabButtonPressed: { backgroundColor: 'rgba(223, 245, 212, 0.38)' },
-  tabLabel: { color: RoomColors.muted, fontSize: 10, fontWeight: '600' },
-  tabLabelSelected: { color: RoomColors.greenDark, fontWeight: '800' },
+  tabButtonSelected: { backgroundColor: c.tabSelected },
+  tabButtonPressed: { backgroundColor: c.tabPressed },
+  tabLabel: { color: c.muted, fontSize: 10, fontWeight: '600' },
+  tabLabelSelected: { color: c.greenDark, fontWeight: '800' },
 });

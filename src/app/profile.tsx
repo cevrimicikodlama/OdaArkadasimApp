@@ -48,6 +48,7 @@ export default function ProfileScreen() {
   const [, googleResponse, promptGoogleAsync] = Google ? Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    language,
   }) : [null, null, null];
 
   useEffect(() => {
